@@ -2,3 +2,4 @@ openai
 faiss-cpu
 streamlit
 requests-html
+lxml[html_clean]
