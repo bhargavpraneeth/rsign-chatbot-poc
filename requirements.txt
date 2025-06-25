@@ -1,0 +1,4 @@
+openai
+faiss-cpu
+streamlit
+requests-html
