@@ -1,12 +1,13 @@
 import os
-import openai
 import faiss
+import openai
 import numpy as np
 from requests_html import HTMLSession
 
-openai.api_key = os.getenv("OPENAI_API_KEY")  # Securely read from Streamlit secrets
+# Initialize OpenAI client using project API key
+client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-# Step 1: Fetch article content from RSign help center
+# Step 1: Fetch articles from RSign Help Center
 def fetch_articles(limit=3):
     session = HTMLSession()
     base_url = "https://help.rpost.com"
@@ -25,20 +26,20 @@ def fetch_articles(limit=3):
             content = content_div.text.strip() if content_div else ""
             data.append({"title": title, "url": url, "content": content})
         except Exception as e:
-            print(f"Error reading {url}: {e}")
+            print(f"[Warning] Skipped article due to error: {e}")
             continue
 
     return data
 
-# Step 2: Get embedding for a text chunk
+# Step 2: Create embedding using OpenAI
 def get_embedding(text):
-    response = openai.embeddings.create(
-        input=[text],
-        model="text-embedding-ada-002"
+    response = client.embeddings.create(
+        model="text-embedding-ada-002",
+        input=[text]
     )
     return np.array(response.data[0].embedding, dtype='float32')
 
-# Step 3: Create FAISS vector store
+# Step 3: Build FAISS index for fast similarity search
 def create_vector_store(docs):
     dimension = 1536
     index = faiss.IndexFlatL2(dimension)
@@ -47,6 +48,7 @@ def create_vector_store(docs):
 
     for doc in docs:
         content = doc["content"]
+        # Split into 800-character chunks
         chunked = [content[i:i+800] for i in range(0, len(content), 800)]
         for chunk in chunked:
             try:
@@ -55,34 +57,37 @@ def create_vector_store(docs):
                 chunks.append(chunk)
                 metadata.append(doc)
             except Exception as e:
-                print(f"Embedding failed: {e}")
+                print(f"[Warning] Embedding failed: {e}")
                 continue
 
     return index, chunks, metadata
 
-# Step 4: Find similar document chunks for user query
+# Step 4: Find top-k similar chunks
 def search_docs(query, index, chunks, k=3):
     emb = get_embedding(query)
     D, I = index.search(np.array([emb]), k)
     return [chunks[i] for i in I[0]]
 
-# Step 5: Generate GPT-4 answer from context
+# Step 5: Generate GPT-4 answer based on top chunks
 def generate_answer(user_q, context_chunks):
     context = "\n\n".join(context_chunks)
     prompt = f"""
-You are an expert assistant for RPost's RSign product.
-Based on the following official documentation, answer the user's question accurately.
+You are a helpful assistant trained on official RPost RSign documentation.
 
-Documentation:
+Answer the user's question using the context below:
+
+Context:
 {context}
 
 User Question: {user_q}
 """
-    res = openai.chat.completions.create(
+
+    response = client.chat.completions.create(
         model="gpt-4",
         messages=[
             {"role": "user", "content": prompt}
         ],
-        temperature=0.3
+        temperature=0.3,
     )
-    return res.choices[0].message.content.strip()
+
+    return response.choices[0].message.content.strip()
