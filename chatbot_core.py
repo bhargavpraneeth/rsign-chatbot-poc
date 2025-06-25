@@ -2,8 +2,9 @@ import openai
 import faiss
 import numpy as np
 from requests_html import HTMLSession
+import os
 
-openai.api_key = "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"  # Replace with os.getenv later
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
 # Step 1: Scrape top 3 articles from RSign
 def fetch_articles(limit=3):
