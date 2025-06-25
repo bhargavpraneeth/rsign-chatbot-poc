@@ -4,8 +4,7 @@ import openai
 import numpy as np
 from requests_html import HTMLSession
 
-# Initialize OpenAI client using project API key
-client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+openai.api_key = "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"  # Replace with os.getenv later
 
 # Step 1: Fetch articles from RSign Help Center
 def fetch_articles(limit=3):
