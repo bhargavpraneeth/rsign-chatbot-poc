@@ -4,8 +4,7 @@ import openai
 import numpy as np
 from requests_html import HTMLSession
 
-openai.api_key = "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"  # Replace with os.getenv later
-
+openai.api_key = "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"
 # Step 1: Fetch articles from RSign Help Center
 def fetch_articles(limit=3):
     session = HTMLSession()
